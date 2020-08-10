@@ -2,9 +2,10 @@ package dev.imabad.mceventsuite.api;
 
 import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.controllers.HealthController;
+import java.io.File;
+
 import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.IConfigProvider;
-import java.io.File;
 import spark.Spark;
 
 public class EventAPI implements IConfigProvider<APIConfig> {
@@ -26,7 +27,6 @@ public class EventAPI implements IConfigProvider<APIConfig> {
     private EventAPI(){
         instance = this;
         new EventCore(new File(System.getProperty("user.dir")));
-        EventCore.getInstance().getConfigRegistry().registerConfig(this);
         endpointRegistry = new EndpointRegistry(apiConfig.getRootRoute());
         if(apiConfig.isDebug())
             Spark.exception(Exception.class, ((exception, request, response) -> {exception.printStackTrace(); response.body(exception.getStackTrace().toString());}));
@@ -59,7 +59,12 @@ public class EventAPI implements IConfigProvider<APIConfig> {
 
     @Override
     public void saveConfig() {
-        EventCore.getInstance().getConfigRegistry().saveConfig(this);
+        EventCore.getInstance().getConfigLoader().saveConfig(this);
+    }
+
+    @Override
+    public boolean saveOnQuit() {
+        return false;
     }
 
     public EndpointRegistry getEndpointRegistry() {
