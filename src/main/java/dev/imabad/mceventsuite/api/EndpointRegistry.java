@@ -8,6 +8,7 @@ import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.api.EventRoute;
 import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.IRegistry;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,17 +33,17 @@ public class EndpointRegistry implements IRegistry {
         this.rootRoute = rootRoute;
     }
 
-    public void registerRoute(EndpointMethod endpointMethod, String endpoint, Route route){
+    public void registerRoute(EndpointMethod endpointMethod, String endpoint, Route route) {
         EventRoute eventRoute = new EventRoute(endpointMethod, endpoint, route);
         this.eventRoutes.add(eventRoute);
-        if(loadedDefault){
+        if (loadedDefault) {
             enableRoute(eventRoute);
         }
     }
 
-    private void enableRoute(EventRoute eventRoute){
+    private void enableRoute(EventRoute eventRoute) {
         String endpoint = rootRoute + "/" + eventRoute.getEndpoint();
-        switch(eventRoute.getEndpointMethod()){
+        switch (eventRoute.getEndpointMethod()) {
             case GET:
                 Spark.get(endpoint, eventRoute.getRoute());
                 break;
@@ -59,43 +60,43 @@ public class EndpointRegistry implements IRegistry {
                 Spark.delete(endpoint, eventRoute.getRoute());
                 break;
         }
-        if(EventAPI.getInstance().isDebug()){
+        if (EventAPI.getInstance().isDebug()) {
             System.out.println(String.format("Registering endpoint %s %s", eventRoute.getEndpointMethod().name(), endpoint));
         }
     }
 
-    public void registerController(Object object){
+    public void registerController(Object object) {
         String prefix = "";
-        if(object.getClass().isAnnotationPresent(Controller.class)){
+        if (object.getClass().isAnnotationPresent(Controller.class)) {
             Controller controller = object.getClass().getAnnotation(Controller.class);
             prefix = controller.prefix();
         }
         Method[] methods = object.getClass().getDeclaredMethods();
-        for(Method method : methods){
-            if(method.isAnnotationPresent(dev.imabad.mceventsuite.api.api.Route.class)){
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(dev.imabad.mceventsuite.api.api.Route.class)) {
                 dev.imabad.mceventsuite.api.api.Route route = method.getAnnotation(dev.imabad.mceventsuite.api.api.Route.class);
                 registerRoute(route.method(), (prefix.length() > 0 ? prefix + "/" : "") + route.endpoint(), (req, res) -> {
-                    if(route.auth()){
+                    if (route.auth()) {
                         String authHeader = req.headers("Authorization");
-                        if(authHeader == null || authHeader.length() < 1){
+                        if (authHeader == null || authHeader.length() < 1) {
                             res.status(401);
                             return false;
                         } else {
-                            if(!EventAPI.getInstance().isValidToken(authHeader)){
+                            if (!EventAPI.getInstance().isValidToken(authHeader)) {
                                 res.status(401);
                                 return false;
                             } else {
                                 DecodedJWT jwt = EventAPI.getInstance().getDecodedToken(authHeader);
                                 Claim uuidClaim = jwt.getClaim("uuid");
-                                if(uuidClaim.isNull()){
+                                if (uuidClaim.isNull()) {
                                     res.status(401);
                                     return false;
                                 }
                                 String uuid = uuidClaim.asString();
                                 EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(UUID.fromString(uuid));
-                                if(eventPlayer != null){
-                                    if(route.permission().length() > 0){
-                                        if(!eventPlayer.hasPermission(route.permission())){
+                                if (eventPlayer != null) {
+                                    if (route.permission().length() > 0) {
+                                        if (!eventPlayer.hasPermission(route.permission())) {
                                             res.status(401);
                                             return false;
                                         }
@@ -106,7 +107,7 @@ public class EndpointRegistry implements IRegistry {
                         }
                     }
                     Object response = method.invoke(object, req, res);
-                    if(route.json()){
+                    if (route.json()) {
                         res.type("application/json");
                         return gson.toJson(response);
                     }
@@ -116,7 +117,27 @@ public class EndpointRegistry implements IRegistry {
         }
     }
 
-    public void enableRoutes(){
+    public void enableRoutes() {
+        Spark.options("/*",
+        (request, response) -> {
+
+            String accessControlRequestHeaders = request
+                    .headers("Access-Control-Request-Headers");
+            if (accessControlRequestHeaders != null) {
+                response.header("Access-Control-Allow-Headers",
+                        accessControlRequestHeaders);
+            }
+
+            String accessControlRequestMethod = request
+                    .headers("Access-Control-Request-Method");
+            if (accessControlRequestMethod != null) {
+                response.header("Access-Control-Allow-Methods",
+                        accessControlRequestMethod);
+            }
+
+            return "OK";
+        });
+        Spark.before((request, response) -> response.header("Access-Control-Allow-Origin", "*"));
         eventRoutes.forEach(this::enableRoute);
         loadedDefault = true;
     }

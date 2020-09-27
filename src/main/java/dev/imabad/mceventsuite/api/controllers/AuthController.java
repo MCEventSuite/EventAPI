@@ -20,6 +20,11 @@ import java.util.UUID;
 @Controller(prefix = "auth")
 public class AuthController {
 
+    @Route(method = EndpointMethod.GET, endpoint="me", auth = true)
+    public EventPlayer me(Request request, Response response){
+        return request.attribute("player");
+    }
+
     @Route(method = EndpointMethod.POST, endpoint = "token")
     public Object authorize(Request request, Response response){
         JsonObject bodyData = GsonUtils.getGson().fromJson(request.body(), JsonObject.class);
