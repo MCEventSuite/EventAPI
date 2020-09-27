@@ -12,4 +12,8 @@ public @interface Route {
 
     boolean json() default true;
 
+    boolean auth() default false;
+
+    String permission() default "";
+
 }

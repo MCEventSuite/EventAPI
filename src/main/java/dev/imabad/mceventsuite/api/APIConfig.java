@@ -7,6 +7,9 @@ public class APIConfig extends BaseConfig {
     private int port = 8080;
     private boolean debug = false;
     private String rootRoute = "";
+    private String secret = "";
+    private String tokenSecret = "";
+    private int tokenDuration = 3600;
 
     @Override
     public String getName() {
@@ -23,5 +26,17 @@ public class APIConfig extends BaseConfig {
 
     public String getRootRoute() {
         return rootRoute;
+    }
+
+    public String getSecret() {
+        return secret;
+    }
+
+    public String getTokenSecret() {
+        return tokenSecret;
+    }
+
+    public int getTokenDuration() {
+        return tokenDuration;
     }
 }

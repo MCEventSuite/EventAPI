@@ -1,20 +1,28 @@
 package dev.imabad.mceventsuite.api;
 
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.gson.Gson;
 import dev.imabad.mceventsuite.api.api.Controller;
 import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.api.EventRoute;
+import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.IRegistry;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+
+import dev.imabad.mceventsuite.core.api.objects.EventPlayer;
+import dev.imabad.mceventsuite.core.modules.mysql.MySQLModule;
+import dev.imabad.mceventsuite.core.modules.mysql.dao.PlayerDAO;
 import spark.Route;
 import spark.Spark;
 
 public class EndpointRegistry implements IRegistry {
 
     private List<EventRoute> eventRoutes;
-    private boolean loadedDefault = false;
+    private boolean loadedDefault = true;
     private Gson gson;
     private String rootRoute;
 
@@ -67,6 +75,36 @@ public class EndpointRegistry implements IRegistry {
             if(method.isAnnotationPresent(dev.imabad.mceventsuite.api.api.Route.class)){
                 dev.imabad.mceventsuite.api.api.Route route = method.getAnnotation(dev.imabad.mceventsuite.api.api.Route.class);
                 registerRoute(route.method(), (prefix.length() > 0 ? prefix + "/" : "") + route.endpoint(), (req, res) -> {
+                    if(route.auth()){
+                        String authHeader = req.headers("Authorization");
+                        if(authHeader == null || authHeader.length() < 1){
+                            res.status(401);
+                            return false;
+                        } else {
+                            if(!EventAPI.getInstance().isValidToken(authHeader)){
+                                res.status(401);
+                                return false;
+                            } else {
+                                DecodedJWT jwt = EventAPI.getInstance().getDecodedToken(authHeader);
+                                Claim uuidClaim = jwt.getClaim("uuid");
+                                if(uuidClaim.isNull()){
+                                    res.status(401);
+                                    return false;
+                                }
+                                String uuid = uuidClaim.asString();
+                                EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(UUID.fromString(uuid));
+                                if(eventPlayer != null){
+                                    if(route.permission().length() > 0){
+                                        if(!eventPlayer.hasPermission(route.permission())){
+                                            res.status(401);
+                                            return false;
+                                        }
+                                    }
+                                    req.attribute("player", eventPlayer);
+                                }
+                            }
+                        }
+                    }
                     Object response = method.invoke(object, req, res);
                     if(route.json()){
                         res.type("application/json");
