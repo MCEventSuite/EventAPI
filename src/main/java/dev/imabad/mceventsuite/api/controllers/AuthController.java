@@ -5,6 +5,7 @@ import dev.imabad.mceventsuite.api.EventAPI;
 import dev.imabad.mceventsuite.api.api.Controller;
 import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.api.Route;
+import dev.imabad.mceventsuite.api.objects.AuthResponse;
 import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.objects.EventPlayer;
 import dev.imabad.mceventsuite.core.modules.mysql.MySQLModule;
@@ -24,25 +25,25 @@ public class AuthController {
         JsonObject bodyData = GsonUtils.getGson().fromJson(request.body(), JsonObject.class);
         if(!bodyData.has("accessCode")){
             response.status(401);
-            return false;
+            return new AuthResponse("Please provide a valid access code");
         }
         String accessCode = bodyData.get("accessCode").getAsString();
         String uuid = EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).getData("access:" + accessCode);
         if(uuid == null){
             response.status(401);
-            return false;
+            return new AuthResponse("Invalid access code");
         }
         EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(UUID.fromString(uuid));
         if(eventPlayer == null){
             response.status(401);
-            return false;
+            return new AuthResponse("No such player exists.");
         }
         if(!eventPlayer.hasPermission("eventsuite.staff")){
             response.status(401);
-            return false;
+            return new AuthResponse("You do not have permission to access this.");
         }
         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).removeData("access:" + accessCode);
-        return EventAPI.getInstance().generateToken(eventPlayer.getUUID());
+        return new AuthResponse(true, EventAPI.getInstance().generateToken(eventPlayer.getUUID()));
     }
 
 }
