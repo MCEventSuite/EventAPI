@@ -8,6 +8,7 @@ import dev.imabad.mceventsuite.api.api.Controller;
 import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.api.Route;
 import dev.imabad.mceventsuite.api.api.UnauthorizedResponse;
+import dev.imabad.mceventsuite.api.objects.BasicResponse;
 import dev.imabad.mceventsuite.api.objects.booths.NewBoothData;
 import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.objects.EventBooth;
@@ -21,11 +22,13 @@ import dev.imabad.mceventsuite.core.modules.redis.RedisChannel;
 import dev.imabad.mceventsuite.core.modules.redis.RedisModule;
 import dev.imabad.mceventsuite.core.modules.redis.messages.NewBoothMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.SendDiscordMessage;
+import dev.imabad.mceventsuite.core.modules.redis.messages.UpdateBoothMessage;
 import dev.imabad.mceventsuite.core.util.GsonUtils;
 import dev.imabad.mceventsuite.core.util.UUIDUtils;
 import spark.Request;
 import spark.Response;
 
+import javax.persistence.Basic;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +39,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BoothController {
 
     private List<String> processingBooths = new ArrayList<>();
+
+    public EventBooth getBooth(Request request){
+        String id = request.params("id");
+        if(id.length() < 1){
+            return null;
+        }
+        return EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getBoothFromID(UUID.fromString(id));
+    }
+
+    public JsonObject body(Request request){
+        return GsonUtils.getGson().fromJson(request.body(), JsonObject.class);
+    }
 
     @Route(endpoint = "tebex", method = EndpointMethod.POST)
     public Object tebexWebhook(Request request, Response response){
@@ -102,15 +117,14 @@ public class BoothController {
             if(element.getAsJsonObject().get("identifier").getAsString().contains("MemberIGN")){
                 String username = element.getAsJsonObject().get("option").getAsString();
                 if(username.length() > 0 && !username.equalsIgnoreCase("none")){
-                    UUID uuid = UUIDUtils.getFromUsername(username);
-                    if(uuid != null){
-                        EventPlayer member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(uuid, username);
-//                        if(member.getRank().getPower() < boothMember.getPower()){
-//                            member.setRank(boothMember);
-//                            EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).savePlayer(eventPlayer);
-//                        }
-                        members.add(member);
+                    EventPlayer member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(username);
+                    if(member == null){
+                        UUID uuid = UUIDUtils.getFromUsername(username);
+                        if(uuid != null) {
+                            member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(uuid, username);
+                        }
                     }
+                    members.add(member);
                 }
             }
         }
@@ -128,6 +142,98 @@ public class BoothController {
     @Route(endpoint = "list", method = EndpointMethod.GET, auth = true, permission = "eventsuite.booths.list")
     public List<EventBooth> booths(Request request, Response response){
         return EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getBooths();
+    }
+
+    @Route(endpoint = "booth/:id", method = EndpointMethod.GET, auth = true, permission = "eventsuite.booths.list")
+    public EventBooth getBooth(Request request, Response response){
+        return getBooth(request);
+    }
+
+    @Route(endpoint = "booth/:id/member", method = EndpointMethod.POST, auth= true, permission = "eventsuite.booths.members.add")
+    public BasicResponse addBoothMember(Request request, Response response){
+        EventBooth booth = getBooth(request);
+        if(booth == null){
+            return BasicResponse.error("No such booth exists");
+        }
+        String newMemberUsername = body(request).get("username").getAsString();
+        EventPlayer member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(newMemberUsername);
+        if(member == null){
+            UUID uuid = UUIDUtils.getFromUsername(newMemberUsername);
+            if(uuid != null) {
+                member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(uuid, newMemberUsername);
+            }
+        }
+        if(booth.getMembers().contains(member)){
+            return BasicResponse.error("User already member");
+        }
+        booth.getMembers().add(member);
+        Optional<EventRank> boothMemberOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("Booth Member");
+        if(!boothMemberOptional.isPresent()){
+            return BasicResponse.error("No such rank to assign");
+        }
+        EventRank boothMember = boothMemberOptional.get();
+        if(member.getRank().getPower() < boothMember.getPower()){
+            member.setRank(boothMember);
+            EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(member);
+        }
+        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).saveBooth(booth);
+        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdateBoothMessage(booth, UpdateBoothMessage.UpdateAction.UPDATE));
+        return BasicResponse.SUCCESS;
+    }
+
+    @Route(endpoint = "booth/:id/member", method = EndpointMethod.DELETE, auth= true, permission = "eventsuite.booths.members.remove")
+    public BasicResponse removeBoothMember(Request request, Response response){
+        EventBooth booth = getBooth(request);
+        if(booth == null){
+            return BasicResponse.error("No such booth exists");
+        }
+        String newMemberUsername = body(request).get("username").getAsString();
+        EventPlayer member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(newMemberUsername);
+        if(member == null){
+            UUID uuid = UUIDUtils.getFromUsername(newMemberUsername);
+            if(uuid != null) {
+                member = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(uuid, newMemberUsername);
+            }
+        }
+        if(!booth.getMembers().contains(member)){
+            return BasicResponse.error("User is not a member");
+        }
+        booth.getMembers().remove(member);
+        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).saveBooth(booth);
+        List<EventBooth> playerBooths = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getPlayerBooths(member);
+        if(playerBooths.size() < 1){
+            Optional<EventRank> defaultRank = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getLowestRank();
+            if(!defaultRank.isPresent()){
+                return BasicResponse.error("No such rank to assign");
+            }
+            EventRank boothMember = defaultRank.get();
+            if(member.getRank().getPower() < boothMember.getPower()){
+                member.setRank(boothMember);
+                EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(member);
+            }
+        }
+        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdateBoothMessage(booth, UpdateBoothMessage.UpdateAction.UPDATE));
+        return BasicResponse.SUCCESS;
+    }
+
+    @Route(endpoint = "booth/:id/changeOwner", method = EndpointMethod.POST, auth= true, permission = "eventsuite.booths.owner")
+    public BasicResponse changeBoothOwner(Request request, Response response){
+        return BasicResponse.SUCCESS;
+    }
+
+    @Route(endpoint = "booth/:id/fix", method = EndpointMethod.POST, auth= true, permission = "eventsuite.booths.fix")
+    public BasicResponse fixBooth(Request request, Response response){
+        return BasicResponse.SUCCESS;
+    }
+
+    @Route(endpoint = "booth/:id/teleport", method = EndpointMethod.POST, auth= true, permission = "eventsuite.booths.teleport")
+    public BasicResponse teleportTo(Request request, Response response){
+        return BasicResponse.SUCCESS;
+    }
+
+    @Route(endpoint = "booth/:id", method = EndpointMethod.DELETE, auth= true, permission = "eventsuite.booths.delete")
+    public BasicResponse deleteBooth(Request request, Response response){
+        return BasicResponse.SUCCESS;
     }
 
     private static String bytesToHex(byte[] hash) {
