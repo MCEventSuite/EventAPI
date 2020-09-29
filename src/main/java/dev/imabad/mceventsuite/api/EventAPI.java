@@ -17,7 +17,9 @@ import java.util.UUID;
 import dev.imabad.mceventsuite.api.controllers.PlayerController;
 import dev.imabad.mceventsuite.core.EventCore;
 import dev.imabad.mceventsuite.core.api.IConfigProvider;
+import dev.imabad.mceventsuite.core.api.objects.EventBooth;
 import dev.imabad.mceventsuite.core.modules.redis.RedisModule;
+import dev.imabad.mceventsuite.core.util.GsonUtils;
 import spark.Spark;
 
 public class EventAPI implements IConfigProvider<APIConfig> {

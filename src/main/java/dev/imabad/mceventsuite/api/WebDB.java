@@ -24,6 +24,9 @@ public class WebDB {
 
     public NewBoothData getBoothApplication(String uuid){
         try {
+            if(connection.isClosed()) {
+                connect();
+            }
             PreparedStatement preparedStatement = connection.prepareStatement("SELECT `owner_uuid`, `members`, `org` FROM booths_applications WHERE owner_uuid = ? AND year = 2020 AND status = 'accepted';");
             preparedStatement.setString(1, uuid);
             ResultSet resultSet = preparedStatement.executeQuery();
