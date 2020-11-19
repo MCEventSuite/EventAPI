@@ -24,6 +24,7 @@ import dev.imabad.mceventsuite.core.modules.redis.messages.AssignDiscordRankMess
 import dev.imabad.mceventsuite.core.modules.redis.messages.NewBoothMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.SendDiscordMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.UpdateBoothMessage;
+import dev.imabad.mceventsuite.core.modules.redis.messages.players.UpdatedPlayerMessage;
 import dev.imabad.mceventsuite.core.util.GsonUtils;
 import dev.imabad.mceventsuite.core.util.UUIDUtils;
 import spark.Request;
@@ -94,6 +95,7 @@ public class BoothController {
                     if(eventPlayer.getRank().getPower() < rank.getPower()) {
                         eventPlayer.setRank(rank);
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
+                        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
                 } else if(packageID == 4124924){
                     EventRank rank;
@@ -108,6 +110,7 @@ public class BoothController {
                     if(eventPlayer.getRank().getPower() < rank.getPower()) {
                         eventPlayer.setRank(rank);
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
+                        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
                 }
                 return true;
