@@ -20,6 +20,7 @@ import dev.imabad.mceventsuite.core.modules.mysql.dao.PlayerDAO;
 import dev.imabad.mceventsuite.core.modules.mysql.dao.RankDAO;
 import dev.imabad.mceventsuite.core.modules.redis.RedisChannel;
 import dev.imabad.mceventsuite.core.modules.redis.RedisModule;
+import dev.imabad.mceventsuite.core.modules.redis.messages.AssignDiscordRankMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.NewBoothMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.SendDiscordMessage;
 import dev.imabad.mceventsuite.core.modules.redis.messages.UpdateBoothMessage;
@@ -67,11 +68,53 @@ public class BoothController {
         byte[] encodedhash = digest.digest(
                 originalString.getBytes(StandardCharsets.UTF_8));
         String token = bytesToHex(encodedhash);
-        /*if(!header.equals(token)){
+        System.out.println("Header: " + header);
+        System.out.println("Generated: " + token);
+        if(!header.equals(token)){
             response.status(401);
             return new UnauthorizedResponse();
-        }*/
-        String userUUID = webhook.getAsJsonObject("customer").get("uuid").getAsString();
+        }
+        JsonObject customer = webhook.getAsJsonObject("customer");
+        String userUUID = customer.get("uuid").getAsString();
+        if(webhook.getAsJsonArray("packages").size() == 1){
+            JsonObject boughtPackage = webhook.getAsJsonArray("packages").get(0).getAsJsonObject();
+            String packageName = boughtPackage.get("name").getAsString().toLowerCase();
+            if(!boughtPackage.get("name").getAsString().toLowerCase().contains("booth")){
+                int packageID = boughtPackage.get("package_id").getAsInt();
+                if(packageID == 4124923){
+                    EventRank rank;
+                    Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP");
+                    if(!rankOptional.isPresent()){
+                        rank = new EventRank(30, "VIP", "", "", Collections.emptyList());
+                        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).saveRank(rank);
+                    } else {
+                        rank = rankOptional.get();
+                    }
+                    EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(UUID.fromString(UUIDUtils.insertDashUUID(userUUID)), customer.get("ign").getAsString());
+                    if(eventPlayer.getRank().getPower() < rank.getPower()) {
+                        eventPlayer.setRank(rank);
+                        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
+                    }
+                } else if(packageID == 4124924){
+                    EventRank rank;
+                    Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP+");
+                    if(!rankOptional.isPresent()){
+                        rank = new EventRank(35, "VIP+", "", "", Collections.emptyList());
+                        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).saveRank(rank);
+                    } else {
+                        rank = rankOptional.get();
+                    }
+                    EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(UUID.fromString(UUIDUtils.insertDashUUID(userUUID)), customer.get("ign").getAsString());
+                    if(eventPlayer.getRank().getPower() < rank.getPower()) {
+                        eventPlayer.setRank(rank);
+                        EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
+                    }
+                }
+                return true;
+            } else if(!packageName.equalsIgnoreCase("small booth") && !packageName.equalsIgnoreCase("medium booth") && !packageName.equalsIgnoreCase("large booth")){
+                return true;
+            }
+        }//758751906565849149
         NewBoothData newBoothData = EventAPI.getInstance().getWebDB().getBoothApplication(userUUID);
         if(newBoothData == null){
             response.status(401);
@@ -82,10 +125,9 @@ public class BoothController {
             return true;
         }
         processingBooths.add(newBoothData.getName());
-        JsonObject customer = webhook.getAsJsonObject("customer");
         JsonObject boughtPackage = webhook.getAsJsonArray("packages").get(0).getAsJsonObject();
         EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(UUID.fromString(UUIDUtils.insertDashUUID(newBoothData.getOwner())), customer.get("ign").getAsString());
-        List<EventBooth> booths = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getPlayerBooths(eventPlayer);
+        List<EventBooth> booths = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getBooths();
         AtomicBoolean shouldContinue = new AtomicBoolean(false);
         if(booths.stream().anyMatch(eventBooth -> eventBooth.getName().equalsIgnoreCase(newBoothData.getName()))){
             booths.stream().filter(eventBooth -> eventBooth.getName().equalsIgnoreCase(newBoothData.getName())).findFirst().ifPresent(eventBooth -> {
@@ -126,6 +168,8 @@ public class BoothController {
                     }
                     members.add(member);
                 }
+            } else if(element.getAsJsonObject().get("identifier").getAsString().contains("Discord")){
+                EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new AssignDiscordRankMessage(element.getAsJsonObject().get("option").getAsString(), "758751906565849149"));
             }
         }
         String type = boughtPackage.get("name").getAsString();
@@ -200,18 +244,6 @@ public class BoothController {
         }
         booth.getMembers().remove(member);
         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).saveBooth(booth);
-        List<EventBooth> playerBooths = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).getPlayerBooths(member);
-        if(playerBooths.size() < 1){
-            Optional<EventRank> defaultRank = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getLowestRank();
-            if(!defaultRank.isPresent()){
-                return BasicResponse.error("No such rank to assign");
-            }
-            EventRank boothMember = defaultRank.get();
-            if(member.getRank().getPower() < boothMember.getPower()){
-                member.setRank(boothMember);
-                EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(member);
-            }
-        }
         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdateBoothMessage(booth, UpdateBoothMessage.UpdateAction.UPDATE));
         return BasicResponse.SUCCESS;
     }
