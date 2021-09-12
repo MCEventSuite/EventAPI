@@ -35,8 +35,10 @@ public class EventPassController {
         EventPassPlayerResponse eventPassPlayerResponse = new EventPassPlayerResponse(eventPassPlayer.getXp(), eventPassPlayer.levelFromXP(), eventPlayer);
         return eventPassPlayerResponse;
     }
-    @Route(endpoint = "rewards", method = EndpointMethod.GET)
+
+    @Route(endpoint = "rewards/:year", method = EndpointMethod.GET)
     public Object rewards(Request request, Response response){
-        return EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(EventPassDAO.class).getRewards();
+        String year = request.params("year");
+        return EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(EventPassDAO.class).getRewards(Integer.parseInt(year));
     }
 }
