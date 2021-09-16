@@ -82,7 +82,7 @@ public class BoothController {
             String packageName = boughtPackage.get("name").getAsString().toLowerCase();
             if(!boughtPackage.get("name").getAsString().toLowerCase().contains("booth")){
                 int packageID = boughtPackage.get("package_id").getAsInt();
-                if(packageID == 4124923){
+                if(packageID == 4529025){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP");
                     if(!rankOptional.isPresent()){
@@ -97,7 +97,7 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
-                } else if(packageID == 4124924){
+                } else if(packageID == 4529026){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP+");
                     if(!rankOptional.isPresent()){
