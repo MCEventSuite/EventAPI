@@ -9,6 +9,7 @@ public class APIConfig extends BaseConfig {
     private String rootRoute = "";
     private String secret = "";
     private String tokenSecret = "";
+    private String ticketSecret = "";
     private int tokenDuration = 3600;
 
     @Override
@@ -38,5 +39,9 @@ public class APIConfig extends BaseConfig {
 
     public int getTokenDuration() {
         return tokenDuration;
+    }
+
+    public String getTicketSecret() {
+        return ticketSecret;
     }
 }

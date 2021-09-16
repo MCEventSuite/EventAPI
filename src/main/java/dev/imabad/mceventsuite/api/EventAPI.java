@@ -57,6 +57,7 @@ public class EventAPI implements IConfigProvider<APIConfig> {
         endpointRegistry.registerController(new BoothController());
         endpointRegistry.registerController(new AuthController());
         endpointRegistry.registerController(new PlayerController());
+        endpointRegistry.registerController(new TicketController());
         endpointRegistry.registerController(new EventPassController());
         endpointRegistry.enableRoutes();
         System.out.println("Starting web server on port: " + apiConfig.getPort());
