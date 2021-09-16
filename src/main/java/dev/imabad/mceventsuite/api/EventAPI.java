@@ -18,6 +18,7 @@ import dev.imabad.mceventsuite.core.api.IConfigProvider;
 import dev.imabad.mceventsuite.core.api.objects.EventBooth;
 import dev.imabad.mceventsuite.core.modules.eventpass.EventPassModule;
 import dev.imabad.mceventsuite.core.modules.redis.RedisModule;
+import dev.imabad.mceventsuite.core.modules.scavenger.ScavengerModule;
 import dev.imabad.mceventsuite.core.util.GsonUtils;
 import spark.Spark;
 
@@ -45,6 +46,7 @@ public class EventAPI implements IConfigProvider<APIConfig> {
         new EventCore(new File(System.getProperty("user.dir")));
         EventCore.getInstance().getModuleRegistry().addAndEnableModule(new RedisModule());
         EventCore.getInstance().getModuleRegistry().addAndEnableModule(new EventPassModule());
+        EventCore.getInstance().getModuleRegistry().addAndEnableModule(new ScavengerModule());
         apiConfig = EventCore.getInstance().getConfigLoader().getOrLoadConfig(this);
         algorithmHS = Algorithm.HMAC256(apiConfig.getTokenSecret());
         jwtVerifier = JWT.require(algorithmHS).build();

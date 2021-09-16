@@ -11,11 +11,17 @@ import dev.imabad.mceventsuite.core.api.objects.EventPlayer;
 import dev.imabad.mceventsuite.core.modules.eventpass.db.*;
 import dev.imabad.mceventsuite.core.modules.mysql.MySQLModule;
 import dev.imabad.mceventsuite.core.modules.mysql.dao.PlayerDAO;
+import dev.imabad.mceventsuite.core.modules.scavenger.db.ScavengerDAO;
+import dev.imabad.mceventsuite.core.modules.scavenger.db.ScavengerHuntPlayer;
+import dev.imabad.mceventsuite.core.modules.scavenger.db.ScavengerLocation;
 import dev.imabad.mceventsuite.core.util.GsonUtils;
 import spark.Request;
 import spark.Response;
 
+import javax.transaction.Transactional;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,6 +29,7 @@ import java.util.stream.Collectors;
 public class EventPassController {
 
     @Route(endpoint = "player/:name", method = EndpointMethod.GET)
+    @Transactional
     public Object player(Request request, Response response){
         String username = request.params("name");
         EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(username);
@@ -31,8 +38,9 @@ public class EventPassController {
             return BasicResponse.error("player does not exist");
         }
         EventPassPlayer eventPassPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(EventPassDAO.class).getOrCreateEventPass(eventPlayer);
-        EventPassPlayerResponse eventPassPlayerResponse = new EventPassPlayerResponse(eventPassPlayer.getXp(), eventPassPlayer.levelFromXP(), eventPlayer);
-        return eventPassPlayerResponse;
+        Set<ScavengerLocation> locations = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(ScavengerDAO.class).getPlayerFoundLocations(eventPlayer);
+//        System.out.println("Locations: " + scavengerHuntPlayer.getFoundLocations().size());
+        return new EventPassPlayerResponse(eventPassPlayer.getXp(), eventPassPlayer.levelFromXP(), eventPlayer, locations);
     }
 
     @Route(endpoint = "rewards/:year", method = EndpointMethod.GET)

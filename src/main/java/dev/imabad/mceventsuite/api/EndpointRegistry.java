@@ -39,6 +39,9 @@ public class EndpointRegistry implements IRegistry {
                 if(f.getDeclaringClass().equals(EventPlayer.class) && f.getName().equals("permissions")){
                     return true;
                 }
+                if(f.getDeclaringClass().equals(EventPlayer.class) && f.getName().equals("attendance")){
+                    return true;
+                }
                 return false;
             }
 
@@ -123,12 +126,18 @@ public class EndpointRegistry implements IRegistry {
                             }
                         }
                     }
-                    Object response = method.invoke(object, req, res);
-                    if (route.json()) {
-                        res.type("application/json");
-                        return gson.toJson(response);
+                    try {
+                        Object response = method.invoke(object, req, res);
+                        if (route.json()) {
+                            res.type("application/json");
+                            return gson.toJson(response);
+                        }
+                        return response;
+                    } catch(Exception e) {
+                        e.printStackTrace();
+                        res.status(500);
+                        return null;
                     }
-                    return response;
                 });
             }
         }

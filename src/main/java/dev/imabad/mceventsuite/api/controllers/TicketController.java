@@ -33,7 +33,7 @@ public class TicketController {
     @Route(endpoint = "ticket", method = EndpointMethod.POST, auth = false)
     public BasicResponse addTicket(Request request, Response response){
         String secret = request.headers("Cubed-Secret");
-        if(secret == null || secret.isEmpty() || secret.equals(EventAPI.getInstance().getConfig().getTicketSecret())) {
+        if(secret == null || secret.isEmpty() || !secret.equals(EventAPI.getInstance().getConfig().getTicketSecret())) {
             return BasicResponse.error("Not allowed!");
         }
         String uuid = body(request).get("uuid").getAsString();
