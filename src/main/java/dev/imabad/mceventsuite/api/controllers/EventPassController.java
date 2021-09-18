@@ -1,6 +1,7 @@
 package dev.imabad.mceventsuite.api.controllers;
 
 import com.google.gson.JsonObject;
+import dev.imabad.mceventsuite.api.MyMCUUID;
 import dev.imabad.mceventsuite.api.api.Controller;
 import dev.imabad.mceventsuite.api.api.EndpointMethod;
 import dev.imabad.mceventsuite.api.api.Route;
@@ -34,8 +35,13 @@ public class EventPassController {
         String username = request.params("name");
         EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(username);
         if(eventPlayer == null){
-            response.status(404);
-            return BasicResponse.error("player does not exist");
+            UUID uuid = MyMCUUID.getUUID(username);
+            if(uuid == null) {
+                response.status(404);
+                return BasicResponse.error("player does not exist");
+            } else {
+                eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getOrCreatePlayer(uuid, username);
+            }
         }
         EventPassPlayer eventPassPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(EventPassDAO.class).getOrCreateEventPass(eventPlayer);
         Set<ScavengerLocation> locations = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(ScavengerDAO.class).getPlayerFoundLocations(eventPlayer);
