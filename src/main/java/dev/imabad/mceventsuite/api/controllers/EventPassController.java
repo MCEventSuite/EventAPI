@@ -19,7 +19,6 @@ import dev.imabad.mceventsuite.core.util.GsonUtils;
 import spark.Request;
 import spark.Response;
 
-import javax.transaction.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -30,7 +29,6 @@ import java.util.stream.Collectors;
 public class EventPassController {
 
     @Route(endpoint = "player/:name", method = EndpointMethod.GET)
-    @Transactional
     public Object player(Request request, Response response){
         String username = request.params("name");
         EventPlayer eventPlayer = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).getPlayer(username);

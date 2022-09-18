@@ -3,3 +3,4 @@ gradle/
 out/
 run/
 build/
+.DS_STORE

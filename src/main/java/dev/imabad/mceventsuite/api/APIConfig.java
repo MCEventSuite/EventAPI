@@ -12,6 +12,9 @@ public class APIConfig extends BaseConfig {
     private String ticketSecret = "";
     private int tokenDuration = 3600;
 
+    private String webIP = "";
+    private String webPassword = "";
+
     @Override
     public String getName() {
         return "api";
@@ -43,5 +46,13 @@ public class APIConfig extends BaseConfig {
 
     public String getTicketSecret() {
         return ticketSecret;
+    }
+
+    public String getWebIP() {
+        return webIP;
+    }
+
+    public String getWebPassword() {
+        return webPassword;
     }
 }

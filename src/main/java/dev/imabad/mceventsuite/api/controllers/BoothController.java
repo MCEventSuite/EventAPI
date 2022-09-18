@@ -30,7 +30,6 @@ import dev.imabad.mceventsuite.core.util.UUIDUtils;
 import spark.Request;
 import spark.Response;
 
-import javax.persistence.Basic;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -80,9 +79,9 @@ public class BoothController {
         if(webhook.getAsJsonArray("packages").size() == 1){
             JsonObject boughtPackage = webhook.getAsJsonArray("packages").get(0).getAsJsonObject();
             String packageName = boughtPackage.get("name").getAsString().toLowerCase();
+            int packageID = boughtPackage.get("package_id").getAsInt();
             if(!boughtPackage.get("name").getAsString().toLowerCase().contains("booth")){
-                int packageID = boughtPackage.get("package_id").getAsInt();
-                if(packageID == 4529025){
+                if(packageID == 5230291){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP");
                     if(!rankOptional.isPresent()){
@@ -97,7 +96,7 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
-                } else if(packageID == 4529026){
+                } else if(packageID == 5230292){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP+");
                     if(!rankOptional.isPresent()){
@@ -114,7 +113,7 @@ public class BoothController {
                     }
                 }
                 return true;
-            } else if(!packageName.equalsIgnoreCase("small booth") && !packageName.equalsIgnoreCase("medium booth") && !packageName.equalsIgnoreCase("large booth")){
+            } else if(!packageName.equalsIgnoreCase("small booth") && !packageName.equalsIgnoreCase("medium booth (limited availability)") && !packageName.equalsIgnoreCase("large booth (limited availability)")){
                 return true;
             }
         }//758751906565849149
@@ -177,6 +176,7 @@ public class BoothController {
         }
         String type = boughtPackage.get("name").getAsString();
         type = type.substring(0, type.indexOf(" ")).toLowerCase();
+        type = type.substring(0, 1).toUpperCase() + type.substring(1);
         EventBooth eventBooth = new EventBooth(newBoothData.getName(), type, eventPlayer, members);
         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(BoothDAO.class).saveBooth(eventBooth);
         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new NewBoothMessage(eventBooth));
