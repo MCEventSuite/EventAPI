@@ -20,10 +20,7 @@ import dev.imabad.mceventsuite.core.modules.mysql.dao.PlayerDAO;
 import dev.imabad.mceventsuite.core.modules.mysql.dao.RankDAO;
 import dev.imabad.mceventsuite.core.modules.redis.RedisChannel;
 import dev.imabad.mceventsuite.core.modules.redis.RedisModule;
-import dev.imabad.mceventsuite.core.modules.redis.messages.AssignDiscordRankMessage;
-import dev.imabad.mceventsuite.core.modules.redis.messages.NewBoothMessage;
-import dev.imabad.mceventsuite.core.modules.redis.messages.SendDiscordMessage;
-import dev.imabad.mceventsuite.core.modules.redis.messages.UpdateBoothMessage;
+import dev.imabad.mceventsuite.core.modules.redis.messages.*;
 import dev.imabad.mceventsuite.core.modules.redis.messages.players.UpdatedPlayerMessage;
 import dev.imabad.mceventsuite.core.util.GsonUtils;
 import dev.imabad.mceventsuite.core.util.UUIDUtils;
@@ -76,6 +73,7 @@ public class BoothController {
         }
         JsonObject customer = webhook.getAsJsonObject("customer");
         String userUUID = customer.get("uuid").getAsString();
+        JsonObject price = webhook.getAsJsonObject("price");
         if(webhook.getAsJsonArray("packages").size() == 1){
             JsonObject boughtPackage = webhook.getAsJsonArray("packages").get(0).getAsJsonObject();
             String packageName = boughtPackage.get("name").getAsString().toLowerCase();
@@ -96,6 +94,7 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
+                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), 0, true));
                 } else if(packageID == 5230292){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP+");
@@ -111,6 +110,7 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
+                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), 0, true));
                 }
                 return true;
             } else if(!packageName.equalsIgnoreCase("small booth") && !packageName.equalsIgnoreCase("medium booth (limited availability)") && !packageName.equalsIgnoreCase("large booth (limited availability)")){

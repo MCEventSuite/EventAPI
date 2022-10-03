@@ -11,14 +11,21 @@ sourceCompatibility = 1.8
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url = uri("https://maven.pkg.github.com/MCEventSuite/EventCore")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_USERNAME")
+            password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
-    compile 'com.sparkjava:spark-core:2.9.2'
-    compile 'dev.imabad.mceventsuite:eventcore'
+    implementation 'com.sparkjava:spark-core:2.9.2'
+    implementation 'dev.imabad.mceventsuite:eventcore:1.0-SNAPSHOT'
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'com.auth0:java-jwt:3.10.3'
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testImplementation group: 'junit', name: 'junit', version: '4.12'
 }
 
 
