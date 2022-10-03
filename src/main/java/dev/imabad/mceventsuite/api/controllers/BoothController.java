@@ -94,7 +94,7 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
-                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), 0, true));
+                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), DonationMessage.Type.VIP, 0, true));
                 } else if(packageID == 5230292){
                     EventRank rank;
                     Optional<EventRank> rankOptional = EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(RankDAO.class).getRankByName("VIP+");
@@ -110,7 +110,24 @@ public class BoothController {
                         EventCore.getInstance().getModuleRegistry().getModule(MySQLModule.class).getMySQLDatabase().getDAO(PlayerDAO.class).saveOrUpdatePlayer(eventPlayer);
                         EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new UpdatedPlayerMessage(eventPlayer.getUUID()));
                     }
-                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), 0, true));
+                    EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), DonationMessage.Type.VIPP, 0, true));
+                } else if(packageID == 2099957) {
+                    JsonArray variables = webhook.getAsJsonObject("packages").getAsJsonArray("variables");
+                    String showDonation = "0";
+                    int cost = 0;
+                    for(JsonElement variable : variables) {
+                        final String identifier = variable.getAsJsonObject().get("identifier").getAsString();
+                        if(identifier.equalsIgnoreCase("price")) {
+                            cost = variable.getAsJsonObject().get("option").getAsInt();
+                        } else if(identifier.equalsIgnoreCase("show_amount")) {
+                            showDonation = variable.getAsJsonObject().get("option").getAsString();
+                        }
+                    }
+
+                    if(showDonation.equalsIgnoreCase("1"))
+                        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), DonationMessage.Type.DONATION, 0, false));
+                    else if(showDonation.equalsIgnoreCase("2"))
+                        EventCore.getInstance().getModuleRegistry().getModule(RedisModule.class).publishMessage(RedisChannel.GLOBAL, new DonationMessage(customer.get("ign").getAsString(), DonationMessage.Type.DONATION, cost, false));
                 }
                 return true;
             } else if(!packageName.equalsIgnoreCase("small booth") && !packageName.equalsIgnoreCase("medium booth (limited availability)") && !packageName.equalsIgnoreCase("large booth (limited availability)")){
