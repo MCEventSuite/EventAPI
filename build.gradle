@@ -1,12 +1,18 @@
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 plugins {
-    id 'com.github.johnrengelman.shadow' version '4.0.4'
+    id "com.github.johnrengelman.shadow" version "7.1.2"
     id 'java'
 }
 
 group 'dev.imabad.mceventsuite'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
 
 repositories {
     mavenCentral()
